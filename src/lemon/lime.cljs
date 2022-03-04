@@ -10,20 +10,6 @@
    ::animating {::done   ::ready
                 ::render ::animating}})
 
-(defn renderer?
-  [x]
-  (impl/renderer? x))
-
-(defn load
-  [sprite]
-  (impl/load sprite))
-
-(defn render
-  ([sprite options]
-   (impl/render sprite options))
-  ([sprite]
-   (render sprite {})))
-
 (defn current-state
   [sprite]
   (impl/current-state sprite))
@@ -34,19 +20,13 @@
   ([sprite key from to fn-3]
    (impl/add-effect sprite key from to fn-3)))
 
-(defn on-loaded
-  ([key sprite fn-3]
-   (add-effect sprite key nil ::loaded fn-3))
-  ([sprite fn-3]
-   (on-loaded ::loaded sprite fn-3)))
-
 (defn on-change
-  ([key sprite fn-3]
+  ([sprite key fn-3]
    (add-effect sprite key (fn [sprite old new]
                             (when (not= old new)
                               (fn-3 sprite old new)))))
   ([sprite fn-3]
-   (on-change ::changed sprite fn-3)))
+   (on-change sprite ::changed fn-3)))
 
 (defn transition
   ([sprite event payload]
@@ -69,9 +49,25 @@
   ([sprite to]
    (impl/move sprite to update-frame)))
 
+(defn create-frames
+  [sprite-sheet dimensions]
+  (impl/create-frames sprite-sheet dimensions))
+
 (defn frames
   [sprite]
   (impl/frames sprite))
+
+(defn current-frame
+  [sprite]
+  (impl/current-frame sprite))
+
+(defn next-frame
+  [sprite]
+  (impl/next-frame sprite))
+
+(defn prev-frame
+  [sprite]
+  (impl/prev-frame sprite))
 
 (defn sprite
   ([config renderer]

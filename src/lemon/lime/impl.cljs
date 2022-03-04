@@ -2,16 +2,20 @@
   (:require [fsm.core :as fsm]
             [lemon.lime.protocols :as proto :refer [Renderer]]))
 
+(defn renderer?
+  [x]
+  (satisfies? x Renderer))
+
+;;; State machine
+
 (def default-state
   {:frame        [0 0]
+   :frames       {:reel  []
+                  :table {}}
    :height       0
    :width        0
    :sprite-sheet {:height 0
                   :width  0}})
-
-(defn renderer?
-  [x]
-  (satisfies? x Renderer))
 
 (defn create-sprite
   [renderer uri initial-state sprite-states]
@@ -58,6 +62,51 @@
    (fsm/transition (first sprite) event)
    sprite))
 
+;;; Core API
+
+(defn with-frame-meta
+  "Add meta to each frame containing the previous and next frames"
+  [original]
+  (loop [metafied   []
+         frames     original
+         prev-frame (last original)]
+    (let [frame      (first frames)
+          next-frame (or (fnext frames) (first original))]
+      (if-not frames
+        metafied
+        (recur
+         (conj metafied (with-meta frame [prev-frame next-frame]))
+         (next frames)
+         frame)))))
+
+(defn create-frames*
+  [frames]
+  (->> frames
+       (reduce #(assoc %1 [(first %2) (second %2)] %2) {})
+       (assoc {:reel frames} :table)))
+
+(defn create-frames
+  [sprite-sheet {:keys [width height]}]
+  (let [{dw :width
+         dy :height} sprite-sheet
+        columns                 (/ dw width)
+        rows                    (/ dy height)]
+    (->> (for [col (range columns)
+               row (range rows)]
+           [col row])
+         (sort-by first)
+         (sort-by second)
+         (with-frame-meta)
+         (create-frames*))))
+
+(defn frames*
+  [sprite]
+  (-> sprite
+      current-state
+      :frames))
+
+(def frames (memoize frames*))
+
 (defn sprite
   [{:keys [uri] :as config} renderer on-change sprite-states]
   (-> (create-sprite renderer uri config sprite-states)
@@ -74,16 +123,30 @@
   ([sprite to update-fn]
    (update-fn sprite to)))
 
-(defn frames
+(defn get-frame
+  [frame sprite]
+  (-> (current-state sprite)
+      (get-in [:frames :table])
+      (get frame)))
+
+(defn current-frame
   [sprite]
-  (let [state  (current-state sprite)
-        {:keys [width height sprite-sheet]} state
-        {dw :width
-         dy :height} sprite-sheet
-        columns (/ dw width)
-        rows    (/ dy height)]
-    (->> (for [col (range columns)
-               row (range rows)]
-           [col row])
-         (sort-by first)
-         (sort-by second))))
+  (-> sprite
+      (current-state)
+      :frame))
+
+(defn next-frame
+  [sprite]
+  (-> sprite
+      current-frame
+      meta
+      second
+      (get-frame sprite)))
+
+(defn prev-frame
+  [sprite]
+  (-> sprite
+      current-frame
+      meta
+      first
+      (get-frame sprite)))

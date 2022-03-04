@@ -3,12 +3,20 @@
             [lemon.lime :as ll]
             [lemon.lime.css :as css]))
 
-#_(def shepherd (ll/sprite
-                 {:uri           "shepherd-swing.png"
-                  :height        52
-                  :width         47
-                  ::css/renderer {:id "shepherd-swing"}}))
+(def shepherd (ll/sprite
+               {:uri          "shepherd-swing.png"
+                :height       52
+                :width        47
+                ::css/renderer {:id "shepherd-swing"}}))
 
-#_(ll/frames shepherd)
+#_(defn interval
+    [fps handler]
+    (js/setInterval handler 1000))
 
-#_(ll/move shepherd [0 0] [1 0])
+#_(def interval-id
+    (interval 80 (fn []
+                   (->> shepherd
+                        (ll/next-frame)
+                        (ll/move shepherd)))))
+
+#_(js/clearInterval interval-id)

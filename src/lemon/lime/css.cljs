@@ -62,7 +62,14 @@
       (update-background element)
       (assoc ::element element)))
 
-(defn create-element
+(defn create-frames
+  [{:keys [sprite-sheet] :as state}]
+  (let [frames (impl/create-frames sprite-sheet state)]
+    (-> state
+        (assoc :frames frames)
+        (assoc :frame  (first (:reel frames))))))
+
+(defn create-state
   "Create the sprite element and draw it's initial state. Returns new
    sprite state that includes the element and sprite sheet dimensions"
   [image sprite]
@@ -70,7 +77,8 @@
     (-> (draw element sprite)
         (update-dimensions element)
         (assoc-in [:sprite-sheet :height] (.-naturalHeight image))
-        (assoc-in [:sprite-sheet :width] (.-naturalWidth image)))))
+        (assoc-in [:sprite-sheet :width] (.-naturalWidth image))
+        (create-frames))))
 
 (defn replace-element
   "The default append function. Is used to replace a configured sprite
@@ -83,7 +91,7 @@
   (-load
     [_ sprite]
     (let [{:keys [uri]} (impl/current-state sprite)]
-      (load-image uri #(transition-load sprite (partial create-element %)))))
+      (load-image uri #(transition-load sprite (partial create-state %)))))
 
   (-render
     [_ sprite options]
