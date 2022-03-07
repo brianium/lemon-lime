@@ -1,6 +1,7 @@
 (ns lemon.lime
   (:require [lemon.lime.css :as css]
-            [lemon.lime.impl :as impl]))
+            [lemon.lime.impl :as impl])
+  (:refer-clojure :exclude [range]))
 
 (def sprite-states
   {nil         {::load ::loaded}
@@ -34,21 +35,6 @@
   ([sprite event]
    (impl/transition sprite event)))
 
-(defn update-frame
-  [sprite frame]
-  (transition sprite ::render (fn [sprite]
-                                (-> sprite
-                                    current-state
-                                    (assoc :frame frame)))))
-
-(defn move
-  ([sprite from to update-fn]
-   (impl/move sprite from to update-fn))
-  ([sprite from to]
-   (move sprite from to update-frame))
-  ([sprite to]
-   (impl/move sprite to update-frame)))
-
 (defn create-frames
   [sprite-sheet dimensions]
   (impl/create-frames sprite-sheet dimensions))
@@ -56,18 +42,6 @@
 (defn frames
   [sprite]
   (impl/frames sprite))
-
-(defn current-frame
-  [sprite]
-  (impl/current-frame sprite))
-
-(defn next-frame
-  [sprite]
-  (impl/next-frame sprite))
-
-(defn prev-frame
-  [sprite]
-  (impl/prev-frame sprite))
 
 (defn sprite
   ([config renderer]
@@ -77,3 +51,32 @@
          transition-render #(transition %1 ::render %2)
          renderer          (css/create-renderer transition-load transition-render)]
      (sprite config renderer))))
+
+(defn index-of
+  [frame sprite]
+  (impl/index-of frame sprite))
+
+(defn range
+  ([from to sprite]
+   (impl/range from to sprite))
+  ([from sprite]
+   (impl/range from sprite)))
+
+(defn move
+  [frame sprite]
+  (transition sprite ::render (fn [sprite]
+                                (-> sprite
+                                    current-state
+                                    (assoc :frame frame)))))
+
+(defn start
+  ([sprite set-state]
+   (transition sprite ::animate set-state))
+  ([sprite]
+   (start sprite current-state)))
+
+(defn stop
+  ([sprite set-state]
+   (transition sprite ::done set-state))
+  ([sprite]
+   (stop sprite current-state)))

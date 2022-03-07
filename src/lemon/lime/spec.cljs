@@ -17,11 +17,7 @@
 
 (s/def ::frame ::point)
 
-(s/def ::reel (s/coll-of ::frame))
-
-(s/def ::table (s/map-of ::point ::frame))
-
-(s/def ::frames (s/keys :req-un [::reel ::table]))
+(s/def ::frames (s/coll-of ::point))
 
 (s/def ::uri string?)
 
@@ -34,7 +30,3 @@
 (s/def ::state-machine #(satisfies? % StateMachine))
 
 (s/def ::sprite (s/tuple ::state-machine ::renderer))
-
-(s/def ::from ::frame)
-
-(s/def ::to ::frame)

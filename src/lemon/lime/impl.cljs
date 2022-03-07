@@ -1,6 +1,7 @@
 (ns ^:no-doc lemon.lime.impl
   (:require [fsm.core :as fsm]
-            [lemon.lime.protocols :as proto :refer [Renderer]]))
+            [lemon.lime.protocols :as proto :refer [Renderer]])
+  (:refer-clojure :rename {range core-range}))
 
 (defn renderer?
   [x]
@@ -10,8 +11,7 @@
 
 (def default-state
   {:frame        [0 0]
-   :frames       {:reel  []
-                  :table {}}
+   :frames       []
    :height       0
    :width        0
    :sprite-sheet {:height 0
@@ -64,40 +64,18 @@
 
 ;;; Core API
 
-(defn with-frame-meta
-  "Add meta to each frame containing the previous and next frames"
-  [original]
-  (loop [metafied   []
-         frames     original
-         prev-frame (last original)]
-    (let [frame      (first frames)
-          next-frame (or (fnext frames) (first original))]
-      (if-not frames
-        metafied
-        (recur
-         (conj metafied (with-meta frame [prev-frame next-frame]))
-         (next frames)
-         frame)))))
-
-(defn create-frames*
-  [frames]
-  (->> frames
-       (reduce #(assoc %1 [(first %2) (second %2)] %2) {})
-       (assoc {:reel frames} :table)))
-
 (defn create-frames
   [sprite-sheet {:keys [width height]}]
   (let [{dw :width
          dy :height} sprite-sheet
         columns                 (/ dw width)
         rows                    (/ dy height)]
-    (->> (for [col (range columns)
-               row (range rows)]
+    (->> (for [col (core-range columns)
+               row (core-range rows)]
            [col row])
          (sort-by first)
          (sort-by second)
-         (with-frame-meta)
-         (create-frames*))))
+         (vec))))
 
 (defn frames*
   [sprite]
@@ -113,40 +91,31 @@
       (on-change #(render %1 config))
       (load)))
 
-(defn move
-  "Move the sprite from one frame to another"
-  ([sprite from to update-fn]
-   (let [{:keys [frame]} (current-state sprite)]
-     (cond-> sprite
-       (not= from frame) (update-fn from)
-       :always           (update-fn to))))
-  ([sprite to update-fn]
-   (update-fn sprite to)))
-
-(defn get-frame
+(defn index-of*
   [frame sprite]
-  (-> (current-state sprite)
-      (get-in [:frames :table])
-      (get frame)))
+  (loop [i 0
+         fs (frames sprite)]
+    (cond
+      (= frame (first fs)) i
+      (empty? fs) -1
+      :else   (recur (inc i) (next fs)))))
 
-(defn current-frame
-  [sprite]
-  (-> sprite
-      (current-state)
-      :frame))
+(def index-of (memoize index-of*))
 
-(defn next-frame
-  [sprite]
-  (-> sprite
-      current-frame
-      meta
-      second
-      (get-frame sprite)))
+(defn range
+  ([from to sprite]
+   (loop [fs    (cycle (frames sprite))
+          frame (first fs)
+          rng   []]
+     (cond
+       (and (seq rng) (= to frame))
+       (conj rng frame)
 
-(defn prev-frame
-  [sprite]
-  (-> sprite
-      current-frame
-      meta
-      first
-      (get-frame sprite)))
+       (or
+        (and (empty? rng) (= from frame))
+        (seq rng))
+       (recur (next fs) (fnext fs) (conj rng frame))
+
+       :else (recur (next fs) (fnext fs) rng))))
+  ([from sprite]
+   (subvec (frames sprite) (index-of from sprite))))

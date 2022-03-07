@@ -13,7 +13,8 @@
                                  :pom-file  "target/classes/META-INF/maven/com.github.brianium/lemon-lime/pom.xml"}}
            
            :dev    {:extra-paths ["dev"]
-                    :extra-deps  {integrant/integrant {:mvn/version "0.8.0"}
+                    :extra-deps  {integrant/integrant    {:mvn/version "0.8.0"}
+                                  org.clojure/core.async {:mvn/version "1.5.648"}
                                   org.clojure/test.check {:mvn/version "1.1.1"}}}
            
            :format {:extra-deps {cljfmt/cljfmt {:mvn/version "0.8.0"}}
