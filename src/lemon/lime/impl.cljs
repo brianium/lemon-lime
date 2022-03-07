@@ -1,7 +1,6 @@
 (ns ^:no-doc lemon.lime.impl
   (:require [fsm.core :as fsm]
-            [lemon.lime.protocols :as proto :refer [Renderer]])
-  (:refer-clojure :rename {range core-range}))
+            [lemon.lime.protocols :as proto :refer [Renderer]]))
 
 (defn renderer?
   [x]
@@ -70,20 +69,18 @@
          dy :height} sprite-sheet
         columns                 (/ dw width)
         rows                    (/ dy height)]
-    (->> (for [col (core-range columns)
-               row (core-range rows)]
+    (->> (for [col (range columns)
+               row (range rows)]
            [col row])
          (sort-by first)
          (sort-by second)
          (vec))))
 
-(defn frames*
+(defn frames
   [sprite]
   (-> sprite
       current-state
       :frames))
-
-(def frames (memoize frames*))
 
 (defn sprite
   [{:keys [uri] :as config} renderer on-change sprite-states]
@@ -91,7 +88,7 @@
       (on-change #(render %1 config))
       (load)))
 
-(defn index-of*
+(defn index-of
   [frame sprite]
   (loop [i 0
          fs (frames sprite)]
@@ -100,9 +97,7 @@
       (empty? fs) -1
       :else   (recur (inc i) (next fs)))))
 
-(def index-of (memoize index-of*))
-
-(defn range
+(defn reel
   ([from to sprite]
    (loop [fs    (cycle (frames sprite))
           frame (first fs)

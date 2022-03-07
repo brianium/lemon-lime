@@ -43,24 +43,15 @@
   [sprite]
   (impl/frames sprite))
 
-(defn sprite
-  ([config renderer]
-   (impl/sprite config renderer on-change sprite-states))
-  ([config]
-   (let [transition-load   #(transition %1 ::load %2)
-         transition-render #(transition %1 ::render %2)
-         renderer          (css/create-renderer transition-load transition-render)]
-     (sprite config renderer))))
-
 (defn index-of
   [frame sprite]
   (impl/index-of frame sprite))
 
-(defn range
+(defn reel
   ([from to sprite]
-   (impl/range from to sprite))
+   (impl/reel from to sprite))
   ([from sprite]
-   (impl/range from sprite)))
+   (impl/reel from sprite)))
 
 (defn move
   [frame sprite]
@@ -80,3 +71,12 @@
    (transition sprite ::done set-state))
   ([sprite]
    (stop sprite current-state)))
+
+(defn sprite
+  ([config renderer]
+   (impl/sprite config renderer on-change sprite-states))
+  ([config]
+   (let [transition-load   #(transition %1 ::load %2)
+         transition-render #(transition %1 ::render %2)
+         renderer          (css/create-renderer transition-load transition-render)]
+     (sprite config renderer))))

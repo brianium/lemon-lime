@@ -37,7 +37,7 @@
   "An animation primitive. Given an animation map, loop until the given pred is true."
   [sprite {:keys [from to duration done] :or {duration 80 done (chan)}} pred]
   (go-loop [t          (timeout duration)
-            frames     (cycle (ll/range from to (ll/start sprite)))
+            frames     (cycle (ll/reel from to (ll/start sprite)))
             last-frame nil]
     (let [frame (first frames)]
       (if-not (alt! done false :default :continue)
@@ -85,7 +85,7 @@
 (defn ping-pong
   [sprite & {:keys [from to duration done] :or {duration 80 done (chan)}}]
   (go-loop [t (timeout duration)
-            ping (ll/range from to (ll/start sprite))
+            ping (ll/reel from to (ll/start sprite))
             pong []]
     (if-not (alt! done false :default :continue)
       (ll/stop sprite)
