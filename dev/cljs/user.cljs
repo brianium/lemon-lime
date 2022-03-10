@@ -8,9 +8,13 @@
             [cljs.core.async :refer [chan go go-loop <! timeout put! alt!]]
             [cljs.core.async.impl.protocols :refer [WritePort ReadPort]]
             [cljs.spec.alpha :as s]
+            [goog.dom :as gdom]
+            [goog.events :as gevents]
             [lemon.lime :as ll]
             [lemon.lime.css :as css]
-            [lemon.lime.spec :as ll.spec])
+            [lemon.lime.spec :as ll.spec]
+            [integrant.core :as ig])
+  (:import [goog.events EventType])
   (:refer-clojure :exclude [loop]))
 
 ;;; Sweet user.cljs animation api specs for great good
@@ -37,13 +41,13 @@
   "An animation primitive. Given an animation map, loop until the given pred is true."
   [sprite {:keys [from to duration done] :or {duration 80 done (chan)}} pred]
   (go-loop [t          (timeout duration)
-            frames     (cycle (ll/reel from to (ll/start sprite)))
+            frames     (cycle (ll/reel from to (ll/animate sprite)))
             last-frame nil]
     (let [frame (first frames)]
       (if-not (alt! done false :default :continue)
-        (ll/stop sprite)
+        (ll/done sprite)
         (do
-          (ll/move frame sprite)
+          (ll/move sprite frame)
           (when-not (pred sprite frame last-frame)
             (<! t)
             (recur (timeout duration) (next frames) frame)))))))
@@ -63,13 +67,12 @@
 
 (defn reset
   "Reset the sprite to a frame"
-  ([sprite from]
-   (ll/move from sprite))
-  ([sprite]
-   (reset sprite [0 0])))
+  [& sprites]
+  (doseq [sprite sprites]
+    (ll/move sprite [0 0])))
 
 (s/fdef reset
-  :args (s/cat :sprite ::ll.spec/sprite :from (s/? ::ll.spec/frame))
+  :args (s/cat :sprites (s/+ ::ll.spec/sprite))
   :ret  ::ll.spec/sprite)
 
 (defn play
@@ -83,14 +86,15 @@
   :ret  ::process)
 
 (defn ping-pong
+  "Animate back and forth between two frames"
   [sprite & {:keys [from to duration done] :or {duration 80 done (chan)}}]
   (go-loop [t (timeout duration)
-            ping (ll/reel from to (ll/start sprite))
+            ping (ll/reel from to (ll/animate sprite))
             pong []]
     (if-not (alt! done false :default :continue)
-      (ll/stop sprite)
+      (ll/done sprite)
       (let [frame (first ping)]
-        (ll/move frame sprite)
+        (ll/move sprite frame)
         (<! t)
         (if-let [remaining (next ping)]
           (recur (timeout duration)
@@ -105,18 +109,6 @@
   :ret  ::process)
 
 ;;; Let's test this jam out on some sprites
-
-(def shepherd (ll/sprite
-               {:uri          "shepherd-swing.png"
-                :height       52
-                :width        47
-                ::css/renderer {:id "shepherd"}}))
-
-(def pedestal (ll/sprite
-               {:uri          "pedestal.png"
-                :height       40
-                :width        21
-                ::css/renderer {:id "pedestal"}}))
 
 (defn swing
   "Swing mighty shepherd! The on-contact function will be called
@@ -139,14 +131,97 @@
 
 (defn play-scene
   "Let our shepherd activate the powers of the pedestal"
-  [shepherd pedestal]
-  (let [done (chan)]
-    (swing shepherd #(activate pedestal done))
-    done))
+  [shepherd pedestal done]
+  (swing shepherd #(activate pedestal done)))
 
-#_(def d (play-scene shepherd pedestal))
+;;; Dev system
 
-#_(put! d :stop)
+(def config
+  {:sprite/renderer {}
 
-#_(doseq [sprite [shepherd pedestal]]
-    (reset sprite))
+   :sprite/pedestal {:uri           "pedestal.png"
+                     :height        40
+                     :width         21
+                     ::css/renderer {:id "pedestal"}
+                     :renderer      (ig/ref :sprite/renderer)}
+
+   :sprite/shepherd {:uri           "shepherd-swing.png"
+                     :height        52
+                     :width         47
+                     ::css/renderer {:id "shepherd"}
+                     :renderer      (ig/ref :sprite/renderer)}
+
+   :animation/done      {}
+
+   :animation/play      {:done     (ig/ref :animation/done)
+                         :shepherd (ig/ref :sprite/shepherd)
+                         :pedestal (ig/ref :sprite/pedestal)}
+
+   :ui/controls         {:play     (ig/ref :animation/play)
+                         :done     (ig/ref :animation/done)
+                         :shepherd (ig/ref :sprite/shepherd)
+                         :pedestal (ig/ref :sprite/pedestal)}})
+
+(defmethod ig/init-key :sprite/renderer [_ _]
+  (ll/create-css-renderer))
+
+(defmethod ig/init-key :sprite/pedestal [_ {:keys [renderer] :as config}]
+  (ll/sprite config renderer))
+
+(defmethod ig/init-key :sprite/shepherd [_ {:keys [renderer] :as config}]
+  (ll/sprite config renderer))
+
+(defmethod ig/init-key :animation/done [_ _]
+  (chan))
+
+(defmethod ig/init-key :animation/play [_ {:keys [shepherd pedestal done]}]
+  (fn []
+    (play-scene shepherd pedestal done)))
+
+(defn disable
+  [& elems]
+  (doseq [elem elems]
+    (.setAttribute elem "disabled" "disabled")))
+
+(defn enable
+  [& elems]
+  (doseq [elem elems]
+    (.removeAttribute elem "disabled")))
+
+(defmethod ig/init-key :ui/controls [_ {:keys [play done shepherd pedestal]}]
+  (let [start         (gdom/getElement "start")
+        stop          (gdom/getElement "stop")
+        reset-button (gdom/getElement "reset")]
+    (gevents/listen start EventType.CLICK (fn []
+                                            (play)
+                                            (disable start reset-button)))
+    (gevents/listen stop EventType.CLICK (fn []
+                                           (put! done :done)
+                                           (enable start reset-button)))
+    (gevents/listen reset-button EventType.CLICK #(reset shepherd pedestal))
+
+    [start stop reset-button]))
+
+(defmethod ig/halt-key! :ui/controls [_ elems]
+  (doseq [elem elems]
+    (gevents/removeAll elem)))
+
+(defonce *system (atom nil))
+
+(defn start
+  "Start the system by populating controls and wiring up event listeners"
+  []
+  (reset! *system (ig/init config)))
+
+(defn stop
+  "Stop the system. Removes event listeners and closes channels"
+  []
+  (when-some [system @*system]
+    (ig/halt! system)
+    :stopped))
+
+(defn restart []
+  (stop)
+  (start))
+
+(restart)

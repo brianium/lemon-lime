@@ -6,8 +6,6 @@
   [x]
   (satisfies? x Renderer))
 
-;;; State machine
-
 (def default-state
   {:frame        [0 0]
    :frames       []
@@ -60,8 +58,6 @@
   ([sprite event]
    (fsm/transition (first sprite) event)
    sprite))
-
-;;; Core API
 
 (defn create-frames
   [sprite-sheet {:keys [width height]}]

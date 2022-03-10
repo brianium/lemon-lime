@@ -21,7 +21,7 @@
 
 (s/def ::uri string?)
 
-(s/def ::sprite-sheet (s/keys :req-un [::dimensions]))
+(s/def ::sprite-sheet ::dimensions)
 
 (s/def ::renderer impl/renderer?)
 
@@ -30,3 +30,15 @@
 (s/def ::state-machine #(satisfies? % StateMachine))
 
 (s/def ::sprite (s/tuple ::state-machine ::renderer))
+
+(s/def ::effect-handler
+  (s/fspec :args (s/cat :sprite ::sprite :old ::state :new ::state)
+           :ret   any?))
+
+(s/def ::payload-fn
+  (s/fspec :args (s/cat :sprite ::sprite)
+           :ret  ::state))
+
+(s/def ::event-payload (s/or :map map? :fn ::payload-fn))
+
+(s/def ::config (s/keys :req-un [::uri ::height ::width]))

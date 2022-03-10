@@ -3,15 +3,33 @@
    renderers should leverage lemon.lime instead of lemon.lime.impl. This renderer leverages impl
    so it can be provided as a default renderer when creating a sprite via lemon.lime. It is a design
    goal of this library to support state transition keys exclusively via the lemon.lime namespace, hence
-   the CssRenderer type accepting transition-x style functions at creation time"
+   the CssRenderer type accepting transition-x style functions at creation time.
+   
+   The css renderer supports configuration via a lemon.lime.css/renderer key. This configuration map
+   accepts an :id field indicating a dom id to be replaced. An :append field may be provided to control
+   how the sprite is added to the dom. The :append key must be a function of 3 arguments. It will receive
+   the sprite element, a target identified by :id if available, and the given :id."
   (:require [clojure.string :as string]
+            [cljs.spec.alpha :as s]
             [goog.dom :as gdom]
             [goog.style :as gstyle]
             [goog.events :as gevent :refer [EventType]]
             [lemon.lime.impl :as impl]
-            [lemon.lime.protocols :refer [Renderer]]))
+            [lemon.lime.protocols :refer [Renderer]]
+            [lemon.lime.spec :as ll.spec]))
 
-(defn px
+(s/def ::id string?)
+
+(s/def ::element #(instance? js/HTMLElement %))
+
+(s/def ::append
+  (s/fspec
+   :args (s/cat :element ::element :target (s/nilable ::element) :id ::id)
+   :ret any?))
+
+(s/def ::renderer (s/keys :req-un [::id] :opt-un [::append]))
+
+(defn ^:no-doc px
   "Convert x to a valid css pixel value. Returns a space joined string of pixel
    values if x is seqable"
   [x]
@@ -20,7 +38,7 @@
     (->> (map px x)
          (string/join " "))))
 
-(defn pos
+(defn ^:no-doc pos
   "Returns a valid CSS background position from the given sprite state"
   [{:keys [width height frame]}]
   (let [[x y] (mapv unchecked-negate frame)]
@@ -29,7 +47,7 @@
         (conj (* y height))
         (px))))
 
-(defn get-background-image
+(defn ^:no-doc get-background-image
   "Get the computed background-image for an element. Useful for checking if the sprite element already
    has a background-image"
   [element]
@@ -39,7 +57,7 @@
       background-image
       nil)))
 
-(defn load-image
+(defn ^:no-doc load-image
   "Load the sprite image by uri. Calls fn-1 with the laoded image or throws an error if the image fails
    to load"
   [uri fn-1]
@@ -48,7 +66,7 @@
     (gevent/listen image EventType.ERROR #(throw (js/Error. (str "Could not load sprite image identified by uri " uri))))
     (set! (.-src image) uri)))
 
-(defn update-dimensions
+(defn ^:no-doc update-dimensions
   "Set the dimensions of the element to match the sprite's state"
   [{:keys [width height]
     :as state} element]
@@ -56,20 +74,20 @@
                                 :height             (px height)})
   state)
 
-(defn update-position
+(defn ^:no-doc update-position
   "Update the css background properties of the sprite element"
   [state element]
   (gstyle/setStyle element #js {:backgroundPosition (pos state)})
   state)
 
-(defn draw
+(defn ^:no-doc draw
   "Update the sprite's CSS background with current state"
   [state element]
   (-> state
       (update-position element)
       (assoc ::element element)))
 
-(defn create-frames
+(defn ^:no-doc create-frames
   "The available set of frames is a function of the loaded sprite-sheet. The renderer
    implementation is responsible for setting the initial frame state. So it is written. So
    it shall be."
@@ -79,7 +97,7 @@
         (assoc :frames frames)
         (assoc :frame  (first frames)))))
 
-(defn guarantee-background
+(defn ^:no-doc guarantee-background
   "If the element already has the given uri as a background image, then dont update
    the background-image style. This can prevent a flicker caused by setting the background-image
    style via cljs (even when they are technically the same value)"
@@ -90,7 +108,7 @@
                                     :backgroundRepeat "no-repeat"}))
     state))
 
-(defn create-state
+(defn ^:no-doc create-state
   "Create the sprite element and draw it's initial state. Returns new
    sprite state that includes the element and sprite sheet dimensions"
   [image sprite]
@@ -103,15 +121,15 @@
         (assoc-in [:sprite-sheet :width] (.-naturalWidth image))
         (create-frames))))
 
-(defn replace-element
+(defn ^:no-doc replace-element
   "The default append function. Is used to replace a configured sprite
    element that already exists on the page."
-  [element target]
+  [element target _]
   (gdom/replaceNode element target))
 
 ;;; A renderer based on updating a CSS background-position property
 
-(deftype CssRenderer [transition-load transition-render]
+(deftype ^:no-doc CssRenderer [transition-load transition-render]
   Renderer
   (-load
     [_ sprite]
@@ -128,12 +146,25 @@
           element   (if appended? target (::element state))]
 
       (when-not appended?
-        (append element target))
+        (append element target id))
 
       (transition-render sprite (fn [sprite]
                                   (-> (impl/current-state sprite)
                                       (draw element)))))))
 
 (defn create-renderer
+  "Create a css renderer"
   [transition-load transition-render]
   (CssRenderer. transition-load transition-render))
+
+(defn element
+  "Sprites rendered by a css renderer contain a reference to their dom element.
+   This function returns that element when available"
+  [sprite]
+  (some-> sprite
+          (impl/current-state)
+          (get ::element)))
+
+(s/fdef element
+  :args (s/cat :sprite ::ll.spec/sprite)
+  :ret  (s/nilable ::element))

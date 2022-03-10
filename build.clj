@@ -41,4 +41,9 @@
   (out _)
   (b/copy-dir {:src-dirs ["out"]
                :target-dir "public/out"})
-  (b/copy-file {:src "index.html" :target "public/index.html"}))
+  (b/copy-file {:src    "index.html"
+                :target "public/index.html"})
+  (b/copy-file {:src    "shepherd-swing.png"
+                :target "public/shepherd-swing.png"})
+  (b/copy-file {:src    "pedestal.png"
+                :target "public/pedestal.png"}))
