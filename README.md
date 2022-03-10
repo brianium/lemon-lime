@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="shepherd-swing.png">
   <br />
+  <br />
+  <img src="shepherd-swing.png">
   <br />
   <img src="logo-text.png" alt="Blah">
 </p>
