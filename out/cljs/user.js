@@ -1339,11 +1339,15 @@ var reset_button = goog.dom.getElement("reset");
 goog.events.listen(start,goog.events.EventType.CLICK,(function (){
 (play.cljs$core$IFn$_invoke$arity$0 ? play.cljs$core$IFn$_invoke$arity$0() : play.call(null));
 
+cljs.user.enable.cljs$core$IFn$_invoke$arity$variadic(cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([stop], 0));
+
 return cljs.user.disable.cljs$core$IFn$_invoke$arity$variadic(cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([start,reset_button], 0));
 }));
 
 goog.events.listen(stop,goog.events.EventType.CLICK,(function (){
 cljs.core.async.put_BANG_.cljs$core$IFn$_invoke$arity$2(done,cljs.core.cst$kw$done);
+
+cljs.user.disable.cljs$core$IFn$_invoke$arity$variadic(cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([stop], 0));
 
 return cljs.user.enable.cljs$core$IFn$_invoke$arity$variadic(cljs.core.prim_seq.cljs$core$IFn$_invoke$arity$2([start,reset_button], 0));
 }));
