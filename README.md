@@ -7,6 +7,8 @@
 
 Lemon Lime makes for delicious sprite(s) in ClojureScript.
 
+[![cljdoc badge](https://cljdoc.org/badge/com.github.brianium/lemon-lime)](https://cljdoc.org/d/com.github.brianium/lemon-lime/CURRENT) [![Clojars Project](https://img.shields.io/clojars/v/com.github.brianium/lemon-lime.svg)](https://clojars.org/com.github.brianium/lemon-lime)
+
 ## Table of contents
 
 - [Usage](#usage)
