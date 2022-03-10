@@ -194,9 +194,11 @@
         reset-button (gdom/getElement "reset")]
     (gevents/listen start EventType.CLICK (fn []
                                             (play)
+                                            (enable stop)
                                             (disable start reset-button)))
     (gevents/listen stop EventType.CLICK (fn []
                                            (put! done :done)
+                                           (disable stop)
                                            (enable start reset-button)))
     (gevents/listen reset-button EventType.CLICK #(reset shepherd pedestal))
 
